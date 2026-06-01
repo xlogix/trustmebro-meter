@@ -11,8 +11,23 @@
 
 import { existsSync } from 'node:fs';
 import { parse as parseToml } from 'smol-toml';
+import { parseUnifiedDiff } from '../core/diff.ts';
 import { runGate } from '../cli/gate.ts';
 import type { RubricDimension } from '../core/model/types.ts';
+
+const TEST_FILE = /\.test\.|\.spec\.|__tests__|(^|\/)tests?\//i;
+
+/** Count added lines in the patch overall and in non-test (production) files. */
+function countAdded(patchText: string): { added: number; prodAdded: number } {
+  const files = parseUnifiedDiff(patchText);
+  let added = 0;
+  let prodAdded = 0;
+  for (const f of files) {
+    added += f.addedLines.length;
+    if (!TEST_FILE.test(f.path)) prodAdded += f.addedLines.length;
+  }
+  return { added, prodAdded };
+}
 
 // ---------------------------------------------------------------------------
 // CLI arg parsing (matches cli/index.ts style)
@@ -87,6 +102,9 @@ interface BridgeRecord {
   model: string;
   reward: number;
   patch_applied: boolean;
+  added_lines: number;
+  prod_added_lines: number;
+  gave_up: boolean;
   binaryPass: boolean;
   dimensions: Record<RubricDimension, DimensionRecord>;
   gaps: Array<{
@@ -416,12 +434,18 @@ async function main(): Promise<void> {
       ]),
     ) as Record<RubricDimension, DimensionRecord>;
 
+    const { added, prodAdded } = countAdded(patchText);
+
     const record: BridgeRecord = {
       task_id: taskName,
       language,
       model: modelLabel,
       reward,
       patch_applied: true,
+      added_lines: added,
+      prod_added_lines: prodAdded,
+      // "gave up": produced essentially no production code yet the run completed.
+      gave_up: prodAdded < 5,
       binaryPass: score.binaryPass,
       dimensions,
       gaps: score.gaps.map((g) => ({
@@ -483,6 +507,9 @@ function makeSkippedRecord(
     model: modelLabel,
     reward,
     patch_applied: false,
+    added_lines: 0,
+    prod_added_lines: 0,
+    gave_up: true,
     binaryPass: false,
     dimensions: emptyDims,
     gaps: [{ rule: reason, file: '', line: 0, severity: 'soft', evidence: reason }],

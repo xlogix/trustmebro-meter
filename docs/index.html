@@ -5,99 +5,107 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="trustmebro-meter: does the AI's 'it's done' actually check out? Benchmark completeness metrics beyond binary pass/fail."
+      content="trustmebro-meter: does the AI's 'it&#39;s done' actually check out? Editorial benchmark exposé — completeness metrics beyond binary pass/fail."
     />
-    <title>trustmebro-meter — completeness results</title>
+    <title>trustmebro-meter — the receipts</title>
+    <link rel="icon" href="./logo.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <!-- ═══════════════════════════════════════════════
-       HEADER
-  ════════════════════════════════════════════════ -->
-    <header class="site-header" role="banner">
-      <div class="header-inner">
-        <a href="#" class="logo-link" aria-label="trustmebro-meter home">
-          <img
-            src="./logo.svg"
-            alt="trustmebro-meter logo: a confident LLM robot next to a spiking BS meter"
-            class="logo-img"
-          />
-        </a>
-        <div class="header-text">
-          <h1 class="site-title">trustmebro-meter</h1>
-          <p class="site-tagline">does the AI's &ldquo;it&rsquo;s done&rdquo; actually check out?</p>
-          <p class="generated-at-line">Results as of <time id="generated-at">—</time></p>
+
+    <!-- ══════════════════════════════════════════
+         MASTHEAD
+    ══════════════════════════════════════════ -->
+    <header class="masthead" role="banner">
+      <div class="masthead-inner">
+        <div class="masthead-brand">
+          <a href="#" class="masthead-logo-link" aria-label="trustmebro-meter home">
+            <img src="./logo.svg" alt="trustmebro-meter logo" class="masthead-logo" />
+          </a>
+          <div class="masthead-wordmark">
+            <span class="wordmark-title">trustmebro-meter</span>
+            <span class="wordmark-dateline">Benchmark report &middot; <time id="generated-at">—</time> &middot; Issue 01</span>
+          </div>
         </div>
+        <p class="masthead-tagline">does the AI&#8217;s &#8220;it&#8217;s done&#8221; actually check out?</p>
       </div>
+      <div class="masthead-rule" aria-hidden="true"></div>
     </header>
 
     <main id="main" class="page-main">
-      <!-- ─── HEADLINE STAT ─── -->
-      <section class="section headline-section" aria-label="Headline finding">
-        <div class="section-inner">
-          <p id="headline-stat" class="headline-stat neutral" role="status" aria-live="polite">Loading&hellip;</p>
-          <p class="thesis-blurb">
-            A model can <strong>pass</strong> the DeepSWE reward signal — yet still ship unwired code, skipped tests, or
-            leftover stubs. This benchmark makes that gap visible.
-          </p>
-        </div>
-      </section>
 
-      <!-- ─── LEADERBOARD ─── -->
-      <section class="section" aria-labelledby="leaderboard-heading">
-        <div class="section-inner">
-          <h2 class="section-heading" id="leaderboard-heading">
-            Model leaderboard
-            <span class="section-sub">sorted by completeness index (higher = more done)</span>
-          </h2>
-          <div id="leaderboard" class="leaderboard-grid" role="list" aria-label="Model leaderboard">
-            <p class="loading-msg">Loading leaderboard&hellip;</p>
+      <!-- ══════════════════════════════════════════
+           SECTION 1 — THE EXPOSÉ HERO
+      ══════════════════════════════════════════ -->
+      <section class="hero-section" aria-label="Exposé headline">
+        <div class="hero-inner">
+          <div class="hero-left">
+            <p class="hero-kicker" aria-hidden="true">The finding</p>
+            <h1 class="hero-headline" id="hero-headline" role="status" aria-live="polite">
+              Loading&hellip;
+            </h1>
+            <p class="hero-deck" id="hero-deck">&nbsp;</p>
+          </div>
+          <div class="hero-right" aria-hidden="true">
+            <div class="hero-gauge-container">
+              <div id="hero-gauge" class="hero-gauge-slot"></div>
+              <div class="gauge-scale-labels">
+                <span class="scale-done">DONE</span>
+                <span class="scale-sus">SUS</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- ─── PER-TASK DETAIL ─── -->
-      <section class="section" aria-labelledby="tasks-heading">
-        <div class="section-inner">
-          <h2 class="section-heading" id="tasks-heading">
-            Per-task results
-            <span class="section-sub">click a row to expand gaps</span>
-          </h2>
-          <div class="table-scroll">
-            <table class="task-table" aria-label="Per-task benchmark results">
-              <thead>
-                <tr>
-                  <th scope="col">Model</th>
-                  <th scope="col">Task</th>
-                  <th scope="col">Lang</th>
-                  <th scope="col">Passed</th>
-                  <th scope="col">Completeness</th>
-                  <th scope="col">Prod LOC</th>
-                  <th scope="col">Cost</th>
-                  <th scope="col">Gaps</th>
-                </tr>
-              </thead>
-              <tbody id="task-tbody">
-                <tr>
-                  <td colspan="6" class="loading-msg">Loading&hellip;</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+      <!-- ══════════════════════════════════════════
+           SECTION 2 — THE STANDINGS
+      ══════════════════════════════════════════ -->
+      <section class="standings-section" aria-labelledby="standings-heading">
+        <div class="section-label" aria-hidden="true">The standings</div>
+        <h2 class="section-heading" id="standings-heading">Model by model</h2>
+        <div id="standings" class="standings-list" role="list" aria-label="Model standings">
+          <p class="loading-msg">Loading&hellip;</p>
         </div>
       </section>
+
+      <!-- ══════════════════════════════════════════
+           SECTION 3 — THE EVIDENCE
+      ══════════════════════════════════════════ -->
+      <section class="evidence-section" aria-labelledby="evidence-heading">
+        <div class="section-label" aria-hidden="true">Exhibit A through Z</div>
+        <h2 class="section-heading" id="evidence-heading">The evidence</h2>
+        <p class="evidence-intro">Each entry below is a task attempt. Sorted by guilt — most gaps first, gave-ups at the top.</p>
+        <div id="evidence-list" class="evidence-list" role="list" aria-label="Evidence entries">
+          <p class="loading-msg">Loading&hellip;</p>
+        </div>
+      </section>
+
     </main>
 
-    <!-- ═══════════════════════════════════════════════
-       FOOTER
-  ════════════════════════════════════════════════ -->
-    <footer class="site-footer" role="contentinfo">
-      <div class="footer-inner">
-        <p class="footer-method">
-          Completeness measured by deterministic static analysis + behavioral execution. No LLM judge.
-        </p>
-        <p id="caveat-note" class="footer-caveat"></p>
-        <p class="footer-sign">made with mild distrust of confident machines 🤖</p>
+    <!-- ══════════════════════════════════════════
+         COLOPHON FOOTER
+    ══════════════════════════════════════════ -->
+    <footer class="colophon" role="contentinfo">
+      <div class="colophon-inner">
+        <div class="colophon-rule" aria-hidden="true"></div>
+        <div class="colophon-body">
+          <p class="colophon-method">
+            <strong>Method:</strong> Completeness = behavioral execution + deterministic static analysis. No LLM judge.
+          </p>
+          <p class="colophon-caveat" id="colophon-caveat">
+            Some failures were behaviorally wrong with clean structure — 0 static gaps — meaning the behavioral axis
+            carried the signal. Static gap rules (unwired-export, leftover-stub, skipped-tests) fire on structural
+            incompleteness, not semantic wrongness.
+          </p>
+          <p class="colophon-sign">made with mild distrust of confident machines</p>
+        </div>
       </div>
     </footer>
 

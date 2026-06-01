@@ -1,354 +1,511 @@
-/* trustmebro-meter — dashboard app.js (vanilla, no dependencies) */
+/* trustmebro-meter — editorial exposé app.js (vanilla, no dependencies) */
 (function () {
   'use strict';
 
-  /* ── helpers ── */
-  const $ = (sel, ctx = document) => ctx.querySelector(sel);
-  const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
-  const pct = (v) => (v * 100).toFixed(1) + '%';
-  const fmt = (v, digits = 2) => (v == null ? '—' : v.toFixed(digits));
+  /* ══════════════════════════════════════════════════════════════════════
+     HELPERS
+  ══════════════════════════════════════════════════════════════════════ */
+
+  const $ = (sel, ctx) => (ctx || document).querySelector(sel);
+  const $$ = (sel, ctx) => Array.from((ctx || document).querySelectorAll(sel));
+
+  /** HTML-escape all data-sourced strings before insertion into innerHTML. */
+  const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ESC[c]);
 
   /**
-   * esc() — HTML-escapes a value sourced from external data (results.js fields
-   * like task_id, model name, file paths, evidence text).  All numeric and
-   * boolean values are safe by construction; strings from the data file pass
-   * through this before being interpolated into innerHTML / SVG strings.
-   */
-  const ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-  const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ESC_MAP[c]);
-
-  /**
-   * setHTML() — replaces an element's children from an HTML string built
-   * entirely by this module (never from raw user/network input).  Uses
-   * createContextualFragment so the intent — "this is trusted markup we built"
-   * — is explicit and auditable.  All data-sourced strings inside that markup
-   * must have already been passed through esc().
+   * setHTML — replaces element children with trusted markup we built.
+   * All data-sourced strings inside must already be esc()-ed.
    */
   const setHTML = (el, html) => {
     while (el.firstChild) el.removeChild(el.firstChild);
     el.appendChild(document.createRange().createContextualFragment(html));
   };
 
-  /* ── colour helpers ── */
-  const scoreColour = (v) => {
-    if (v >= 0.85) return 'var(--mint)';
-    if (v >= 0.55) return 'var(--amber)';
-    return 'var(--coral)';
+  const pct = (v, digits) => (v * 100).toFixed(digits == null ? 1 : digits) + '%';
+  const usd = (v) => (v == null ? '—' : '$' + v.toFixed(2));
+  const tokM = (v) => (v == null ? '—' : (v / 1_000_000).toFixed(1) + 'M');
+
+  /** Format a date string like "Jun 1, 2026, 9:00 PM". Falls back to raw string. */
+  const fmtDate = (s) => {
+    try {
+      return new Date(s).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    } catch (_) {
+      return s;
+    }
   };
 
-  /* ── completeness index for a model's avg_dimension object ── */
-  const computeCI = (avgDim) => {
-    const dims = ['behavioral_coverage', 'integration', 'test_honesty', 'stubs_left'];
-    const vals = dims.map((d) => avgDim[d]).filter((v) => v != null);
+  /* ══════════════════════════════════════════════════════════════════════
+     METRICS
+  ══════════════════════════════════════════════════════════════════════ */
+
+  const CI_DIMS = ['behavioral_coverage', 'integration', 'test_honesty', 'stubs_left'];
+
+  /** Completeness index from a model's avg_dimension object. */
+  const modelCI = (avgDim) => {
+    const vals = CI_DIMS.map((d) => avgDim[d]).filter((v) => v != null);
     return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
   };
 
-  /* ── completeness index for a single record's dimensions object ── */
-  const recordCI = (dimensions) => {
-    const dims = ['behavioral_coverage', 'integration', 'test_honesty', 'stubs_left'];
-    const vals = dims.filter((d) => dimensions[d] && dimensions[d].evaluated).map((d) => dimensions[d].score);
+  /** Completeness index for a single record's dimensions object (evaluated dims only). */
+  const recordCI = (dims) => {
+    const vals = CI_DIMS.filter((d) => dims[d] && dims[d].evaluated).map((d) => dims[d].score);
     return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
   };
 
-  /* ─────────────────────────────────────────────────────────────────────────
-   * BS-meter gauge SVG
-   * All interpolated values are numeric (coordinates, percentages) or
-   * CSS-variable names — no data-sourced strings here.
-   * ───────────────────────────────────────────────────────────────────────── */
-  function bsMeterSVG(completeness, uid) {
-    const sus = 1 - completeness;
-    const angle = -80 + sus * 160;
-    const rad = (angle * Math.PI) / 180;
-    const nx = (60 + Math.cos(rad) * 44).toFixed(1);
-    const ny = (60 + Math.sin(rad) * 44).toFixed(1);
-    const colour = scoreColour(completeness);
-    const dashOffset = (157 * completeness).toFixed(1);
-    const susLabel = pct(sus); // numeric only
-    return `<svg class="bs-gauge" viewBox="0 0 120 76" xmlns="http://www.w3.org/2000/svg" aria-label="BS meter: ${susLabel} sus">
+  /** Map a 0-1 score to a color token name. */
+  const scoreClass = (v) => (v >= 0.85 ? 'mint' : v >= 0.55 ? 'amber' : 'coral');
+  const scoreHex = (v) => (v >= 0.85 ? '#1C9A68' : v >= 0.55 ? '#E0922B' : '#EA5440');
+
+  /* ══════════════════════════════════════════════════════════════════════
+     BS-METER GAUGE SVG
+     All interpolated values are numeric/CSS-var — no data strings.
+  ══════════════════════════════════════════════════════════════════════ */
+
+  /**
+   * Build an inline SVG half-circle BS-meter.
+   * @param {number} completeness - 0..1
+   * @param {string} uid - unique suffix for <defs> IDs
+   * @param {boolean} large - if true, render hero-size version with animated needle
+   */
+  function bsMeterSVG(completeness, uid, large) {
+    /* Clamp to avoid rendering artefacts */
+    const ci = Math.min(1, Math.max(0, completeness));
+    const sus = 1 - ci;
+
+    /* The arc: centre (100,100), radius 80. From 180° to 0° (left to right). */
+    /* Needle angle: −90° is left (DONE), +90° is right (SUS). */
+    /* Map completeness 1→−90°, 0→+90°. So angle = (sus * 180) − 90. */
+    const angleDeg = sus * 180 - 90;
+    const angleRad = (angleDeg * Math.PI) / 180;
+    const needleLen = large ? 68 : 38;
+    const cx = 100;
+    const cy = 100;
+    const nx = (cx + Math.cos(angleRad) * needleLen).toFixed(2);
+    const ny = (cy + Math.sin(angleRad) * needleLen).toFixed(2);
+
+    /* Track arc: half-circle, 160 units long (perimeter ≈ π×80 ≈ 251) */
+    /* We use a fixed arc path, then colour fill with dashoffset. */
+    /* SVG arc: M 20,100 A 80 80 0 0 1 180,100 */
+    const arcLen = 251.3; /* π × 80 */
+    const fillLen = (ci * arcLen).toFixed(2);
+    const emptyLen = ((1 - ci) * arcLen).toFixed(2);
+
+    const needleColour = '#221C49';
+    const pivotR = large ? 7 : 4;
+    const gradId = 'ggrad-' + uid;
+    const sw = large ? 12 : 7; /* stroke-width */
+
+    const animClass = large ? ' class="gauge-needle-animated"' : '';
+
+    return `<svg viewBox="0 0 200 110" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <defs>
-    <linearGradient id="gauge-grad-${uid}" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="var(--mint)"/>
-      <stop offset="55%" stop-color="var(--amber)"/>
-      <stop offset="100%" stop-color="var(--coral)"/>
+    <linearGradient id="${gradId}" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#1C9A68"/>
+      <stop offset="50%"  stop-color="#E0922B"/>
+      <stop offset="100%" stop-color="#EA5440"/>
     </linearGradient>
   </defs>
-  <path d="M12 62 A50 50 0 0 1 108 62" fill="none" stroke="#E5E7EB" stroke-width="10" stroke-linecap="round"/>
-  <path d="M12 62 A50 50 0 0 1 108 62" fill="none" stroke="url(#gauge-grad-${uid})" stroke-width="10" stroke-linecap="round"
-        stroke-dasharray="157" stroke-dashoffset="${dashOffset}" opacity="0.55"/>
-  <line x1="60" y1="62" x2="${nx}" y2="${ny}" stroke="var(--indigo-dark)" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="60" cy="62" r="5" fill="var(--indigo-dark)"/>
-  <text x="8" y="76" font-family="var(--font)" font-size="9" font-weight="700" fill="var(--mint)" text-anchor="middle">DONE</text>
-  <text x="112" y="76" font-family="var(--font)" font-size="9" font-weight="700" fill="var(--coral)" text-anchor="middle">SUS</text>
+  <!-- track -->
+  <path d="M 20,100 A 80,80 0 0,1 180,100"
+        fill="none" stroke="#D8D2EE" stroke-width="${sw}" stroke-linecap="round"/>
+  <!-- coloured fill from DONE side -->
+  <path d="M 20,100 A 80,80 0 0,1 180,100"
+        fill="none" stroke="url(#${gradId})" stroke-width="${sw}" stroke-linecap="round"
+        stroke-dasharray="${arcLen}"
+        stroke-dashoffset="${emptyLen}"/>
+  <!-- needle -->
+  <line${animClass} x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}"
+       stroke="${needleColour}" stroke-width="${large ? 3 : 2}" stroke-linecap="round"/>
+  <!-- pivot -->
+  <circle cx="${cx}" cy="${cy}" r="${pivotR}" fill="${needleColour}"/>
 </svg>`;
   }
 
-  /* ─────────────────────────────────────────────────────────────────────────
-   * Mini dimension progress bar
-   * label is a hardcoded literal from our dims array (not from data).
-   * value and colour are numeric / CSS variable — safe without escaping.
-   * ───────────────────────────────────────────────────────────────────────── */
-  function dimBar(label, value, evaluated) {
-    if (!evaluated) {
-      return `<div class="dim-bar">
-  <span class="dim-label">${label}</span>
-  <span class="dim-na">n/a — v1</span>
-</div>`;
-    }
-    const colour = scoreColour(value);
-    const valPct = pct(value);
-    const valInt = (value * 100).toFixed(0);
-    return `<div class="dim-bar">
-  <span class="dim-label">${label}</span>
-  <div class="dim-track" role="progressbar" aria-valuenow="${valInt}" aria-valuemin="0" aria-valuemax="100">
-    <div class="dim-fill" style="width:${valPct};background:${colour};"></div>
-  </div>
-  <span class="dim-val" style="color:${colour}">${valPct}</span>
-</div>`;
-  }
+  /* ══════════════════════════════════════════════════════════════════════
+     SECTION 1 — HERO HEADLINE + GAUGE
+  ══════════════════════════════════════════════════════════════════════ */
 
-  /* ─────────────────────────────────────────────────────────────────────────
-   * Leaderboard card
-   * modelId comes from the data file — escaped via esc().
-   * All numeric interpolations (rank, rates, costs) are safe by construction.
-   * ───────────────────────────────────────────────────────────────────────── */
-  function renderLeaderboardCard(modelId, model, rank) {
-    const ci = computeCI(model.avg_dimension);
-    const passRate = model.pass_rate;
-    const gap = passRate - ci;
-    const gapClass = gap > 0.1 ? 'gap-warn' : gap > 0 ? 'gap-mild' : 'gap-ok';
+  function renderHero(data) {
+    const { records, models } = data;
 
-    const DIMS = [
-      { key: 'behavioral_coverage', label: 'Behavioral' },
-      { key: 'integration', label: 'Integration' },
-      { key: 'test_honesty', label: 'Test honesty' },
-      { key: 'stubs_left', label: 'Stubs left' },
-      { key: 'error_path', label: 'Error paths' },
-    ];
-
-    const dimBarsHTML = DIMS.map((d) => {
-      const val = model.avg_dimension[d.key];
-      return dimBar(d.label, val, d.key !== 'error_path');
-    }).join('');
-
-    const gapDeltaHTML =
-      gap > 0.02 ? `<span class="gap-delta">−${pct(gap)}</span>` : `<span class="gap-delta ok">≈</span>`;
-
-    const gaugeLabel = ci >= 0.85 ? 'DONE ✓' : ci >= 0.55 ? 'MOSTLY' : 'SUS ⚠';
-
-    // modelId is from the data file — escape it before placing in HTML
-    const safeModelId = esc(modelId);
-
-    // Honest caption: when 0 gaps AND 0 pass rate, clarify that clean = behavioral failure, not stubs
-    const honestGapsCaption =
-      model.gaps_per_trial === 0 && passRate === 0
-        ? `<p class="honest-gaps-note">0 static gaps — failures were behavioral, not stubs</p>`
-        : '';
-
-    return `<div class="lb-card" data-model="${safeModelId}">
-  <div class="lb-card-header">
-    <div class="lb-rank">#${rank}</div>
-    <div class="lb-name">${safeModelId}</div>
-    <div class="lb-ci-badge" style="background:${scoreColour(ci)}">${pct(ci)}</div>
-  </div>
-  <div class="lb-metrics">
-    <div class="metric-pair ${gapClass}">
-      <div class="metric-item">
-        <div class="metric-val" style="color:${scoreColour(passRate)}">${pct(passRate)}</div>
-        <div class="metric-lbl">DeepSWE pass</div>
-      </div>
-      <div class="metric-divider">
-        <div class="gap-arrow ${gapClass}" title="Gap between pass rate and completeness">
-          ${gapDeltaHTML}
-        </div>
-      </div>
-      <div class="metric-item">
-        <div class="metric-val" style="color:${scoreColour(ci)}">${pct(ci)}</div>
-        <div class="metric-lbl">Completeness</div>
-      </div>
-    </div>
-    <div class="metric-row">
-      <div class="metric-item sm">
-        <div class="metric-val sm">${model.gaps_per_trial.toFixed(2)}</div>
-        <div class="metric-lbl">gaps/trial</div>
-      </div>
-      <div class="metric-item sm">
-        <div class="metric-val sm">${model.n_trials}</div>
-        <div class="metric-lbl">trials</div>
-      </div>
-      <div class="metric-item sm">
-        <div class="metric-val sm">${fmt(model.avg_cost_usd)}</div>
-        <div class="metric-lbl">avg cost</div>
-      </div>
-    </div>
-    ${honestGapsCaption}
-  </div>
-  <div class="lb-gauge-wrap">
-    ${bsMeterSVG(ci, rank)}
-    <div class="gauge-label" style="color:${scoreColour(ci)}">${gaugeLabel}</div>
-  </div>
-  <div class="lb-dims">
-    <div class="dims-heading">Dimensions</div>
-    ${dimBarsHTML}
-  </div>
-</div>`;
-  }
-
-  /* ─────────────────────────────────────────────────────────────────────────
-   * Per-task table rows
-   * All string fields from the data (model, task_id, language, file, rule,
-   * evidence) are passed through esc() before interpolation.
-   * ───────────────────────────────────────────────────────────────────────── */
-  function renderTaskRow(rec, idx) {
-    const ci = recordCI(rec.dimensions);
-    const ciLabel = ci != null ? pct(ci) : '—';
-    const ciColour = ci != null ? scoreColour(ci) : '#6B7280';
-    const passIcon =
-      rec.reward >= 1
-        ? `<span class="badge pass" aria-label="passed">✓</span>`
-        : `<span class="badge fail" aria-label="failed">✗</span>`;
-
-    // LOC cell — show gave-up pill when applicable, otherwise show prod LOC count
-    const prodLoc = rec.prod_added_lines != null ? rec.prod_added_lines : null;
-    const locCellHTML =
-      rec.gave_up === true
-        ? `<span class="gave-up-pill" aria-label="gave up, 0 production lines">gave up · 0 LOC</span>`
-        : prodLoc != null
-          ? `<span class="loc-val">${prodLoc}</span>`
-          : '—';
-
-    const gapsHTML =
-      rec.gaps.length === 0
-        ? '<p class="no-gaps">No gaps found — clean!</p>'
-        : rec.gaps
-            .map((g) => {
-              const loc = esc(g.file || '?') + (g.line ? ':' + Number(g.line) : '');
-              const rule = esc(g.rule || '');
-              const evidence = esc(g.evidence || '');
-              return `<div class="gap-item">
-  <span class="gap-loc">${loc}</span>
-  <span class="gap-rule">[${rule}]</span>
-  <span class="gap-evidence">${evidence}</span>
-</div>`;
-            })
-            .join('');
-
-    // Cost cell — show per-task cost if available
-    const costLabel = rec.cost_usd != null ? '$' + rec.cost_usd.toFixed(2) : '—';
-
-    return `<tr class="task-row" data-idx="${idx}" tabindex="0" role="button" aria-expanded="false">
-  <td>${esc(rec.model)}</td>
-  <td class="task-id">${esc(rec.task_id)}</td>
-  <td><span class="lang-pill">${esc(rec.language)}</span></td>
-  <td>${passIcon}</td>
-  <td><span class="ci-val" style="color:${ciColour}">${ciLabel}</span></td>
-  <td>${locCellHTML}</td>
-  <td><span class="cost-val">${costLabel}</span></td>
-  <td><span class="gap-count${rec.gaps.length > 0 ? ' has-gaps' : ''}">${rec.gaps.length}</span></td>
-</tr>
-<tr class="gap-detail-row hidden" id="gap-detail-${idx}" aria-hidden="true">
-  <td colspan="8"><div class="gap-detail-inner">${gapsHTML}</div></td>
-</tr>`;
-  }
-
-  /* ─────────────────────────────────────────────────────────────────────────
-   * Headline stat
-   * Numbers and plural suffixes only — no data strings interpolated.
-   * ───────────────────────────────────────────────────────────────────────── */
-  function buildHeadlineStat(records) {
-    // Exclude oracle-gold from the GLM-focused headline
+    /* Exclude oracle from headline */
     const glmRecords = records.filter((r) => r.model !== 'oracle-gold');
-    const totalGlmTasks = glmRecords.length;
-    const glmPassed = glmRecords.filter((r) => r.reward >= 1).length;
-    const glmGaveUp = glmRecords.filter((r) => r.gave_up === true).length;
+    const total = glmRecords.length;
+    const passed = glmRecords.filter((r) => r.reward >= 1).length;
+    const gaveUp = glmRecords.filter((r) => r.gave_up === true).length;
 
-    // Find the single most expensive GLM attempt
+    /* Priciest attempt */
     let priciest = null;
-    let priciestCost = 0;
-    let priciestTokens = 0;
     for (const r of glmRecords) {
-      if (r.cost_usd != null && r.cost_usd > priciestCost) {
-        priciestCost = r.cost_usd;
+      if (r.cost_usd != null && (priciest == null || r.cost_usd > priciest.cost_usd)) {
         priciest = r;
-        const totalTokens = (r.tokens.input || 0) + (r.tokens.output || 0);
-        priciestTokens = totalTokens;
       }
     }
 
-    if (totalGlmTasks === 0) {
-      return { html: 'No solutions passed yet — benchmark warming up.', cls: 'neutral' };
-    }
+    const priciestCost = priciest ? usd(priciest.cost_usd) : '?';
+    const priciestTok = priciest
+      ? tokM((priciest.tokens.input || 0) + (priciest.tokens.output || 0))
+      : '?';
 
-    const tokensMFormatted = priciestTokens > 0 ? (priciestTokens / 1_000_000).toFixed(0) + 'M' : '?';
-    const costFormatted = priciestCost > 0 ? '$' + priciestCost.toFixed(2) : '?';
+    /* Overall GLM completeness: average CI across non-oracle models */
+    const glmModelEntries = Object.entries(models).filter(([id]) => id !== 'oracle-gold');
+    const overallCI =
+      glmModelEntries.length
+        ? glmModelEntries.reduce((sum, [, m]) => sum + modelCI(m.avg_dimension), 0) /
+          glmModelEntries.length
+        : 0;
 
-    const gaveUpPhrase = glmGaveUp > 0 ? ` <strong>${glmGaveUp}</strong> gave up without writing a line.` : '';
+    /* Headline — no data strings interpolated (only numbers/literals) */
+    const headlineEl = $('#hero-headline');
+    const passWord = passed === 0 ? '<span class="accent-zero">zero</span>' : String(passed);
+    setHTML(
+      headlineEl,
+      `GLM passed ${passWord} of ${total} real feature tasks.`
+    );
 
-    return {
-      html: `GLM models passed <strong>0 of ${totalGlmTasks}</strong> real feature tasks.${gaveUpPhrase} The priciest attempt burned <strong>${costFormatted}</strong> and <strong>${tokensMFormatted} tokens</strong> — and still failed.`,
-      cls: 'warn',
-    };
+    /* Deck */
+    const deckEl = $('#hero-deck');
+    const gaveUpPhrase =
+      gaveUp > 0
+        ? `<strong>${gaveUp}</strong> attempt${gaveUp > 1 ? 's' : ''} gave up writing zero production lines. `
+        : '';
+    setHTML(
+      deckEl,
+      `${gaveUpPhrase}The priciest run burned <strong>${esc(priciestCost)}</strong> and ` +
+        `<strong>${esc(priciestTok)} tokens</strong> — and still failed.`
+    );
+
+    /* Hero gauge */
+    const gaugeSlot = $('#hero-gauge');
+    setHTML(gaugeSlot, bsMeterSVG(overallCI, 'hero', true));
   }
 
-  /* ── main render ── */
-  function render(data) {
-    const { generated_at, models, records } = data;
+  /* ══════════════════════════════════════════════════════════════════════
+     SECTION 2 — STANDINGS
+  ══════════════════════════════════════════════════════════════════════ */
 
-    /* generated_at — set via textContent, never innerHTML */
-    let genLabel = generated_at;
-    try {
-      genLabel = new Date(generated_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-    } catch (_) {}
-    $('#generated-at').textContent = genLabel;
+  const DIM_LABELS = {
+    behavioral_coverage: 'Behavioral',
+    integration:         'Integration',
+    test_honesty:        'Test honesty',
+    stubs_left:          'Stubs clean',
+    error_path:          'Error paths',
+  };
 
-    /* headline stat — only numeric/literal interpolations; use setHTML */
-    const { html: headlineHTML, cls: headlineCls } = buildHeadlineStat(records);
-    const headlineEl = $('#headline-stat');
-    headlineEl.className = 'headline-stat ' + headlineCls;
-    setHTML(headlineEl, headlineHTML);
+  function dimChipsHTML(avgDim) {
+    return Object.entries(DIM_LABELS)
+      .map(([key, label]) => {
+        const v = avgDim[key];
+        if (key === 'error_path') {
+          return `<span class="dim-chip chip-na" title="${label}: not evaluated in v1">${label} n/a</span>`;
+        }
+        if (v == null) {
+          return `<span class="dim-chip chip-na">${label} —</span>`;
+        }
+        const cls = v >= 0.85 ? 'chip-pass' : v >= 0.55 ? 'chip-mid' : 'chip-fail';
+        return `<span class="dim-chip ${cls}" title="${label}: ${pct(v)}">${label} ${pct(v, 0)}</span>`;
+      })
+      .join('');
+  }
 
-    /* leaderboard — model IDs are escaped inside renderLeaderboardCard */
-    const sortedModels = Object.entries(models).sort(
-      ([, a], [, b]) => computeCI(b.avg_dimension) - computeCI(a.avg_dimension),
-    );
-    setHTML($('#leaderboard'), sortedModels.map(([id, m], i) => renderLeaderboardCard(id, m, i + 1)).join(''));
+  function renderStandingRow(modelId, model, rank, isOracle) {
+    const ci = modelCI(model.avg_dimension);
+    const passRate = model.pass_rate;
+    const safeId = esc(modelId);
 
-    /* task table — all data strings escaped inside renderTaskRow */
-    setHTML($('#task-tbody'), records.map((r, i) => renderTaskRow(r, i)).join(''));
+    /* Cost label */
+    const costLabel = model.avg_cost_usd != null ? usd(model.avg_cost_usd) + '/trial' : 'ref';
 
-    /* caveat note — set via textContent on a pre-existing element; no data strings used */
-    const caveatEl = $('#caveat-note');
-    if (caveatEl) {
-      caveatEl.textContent =
-        "trustmebro's static gap rules (stubs · unwired · skipped tests) fire on structurally-incomplete work; these GLM failures were behaviorally wrong or absent, so the behavioral + LOC + cost axes carried the signal here. See gate mode for static-gap detection in action.";
+    /* Verdict text */
+    let verdictNote = '';
+    if (isOracle) {
+      verdictNote = 'Reference baseline — human-crafted complete implementation.';
+    } else if (passRate === 0 && ci < 0.5) {
+      verdictNote = `Completeness index ${pct(ci)} — structural + behavioral gaps throughout.`;
+    } else if (passRate === 0) {
+      verdictNote = `Passes structural checks but fails behaviorally. CI ${pct(ci)}.`;
+    } else {
+      verdictNote = `Pass rate ${pct(passRate)}, CI ${pct(ci)}.`;
     }
 
-    /* row toggle — attached after DOM is in place */
-    $$('.task-row').forEach((row) => {
-      const toggle = () => {
-        const idx = row.dataset.idx;
-        const detail = $(`#gap-detail-${idx}`);
-        const expanded = row.getAttribute('aria-expanded') === 'true';
-        row.setAttribute('aria-expanded', String(!expanded));
-        detail.setAttribute('aria-hidden', String(expanded));
-        detail.classList.toggle('hidden', expanded);
-        row.classList.toggle('expanded', !expanded);
+    /* Expensive + worse label for glm-4.6 */
+    let spendingNote = '';
+    if (!isOracle && model.gaps_per_trial > 1) {
+      spendingNote = ` &middot; <span style="color:var(--coral)">${model.gaps_per_trial.toFixed(1)} gaps/trial</span>`;
+    }
+
+    const ciColour = scoreHex(ci);
+    const oracleClass = isOracle ? ' is-oracle' : '';
+    const rankLabel = isOracle ? '&#9733;' : String(rank);
+
+    const gaugeHTML = bsMeterSVG(ci, 'lb-' + rank, false);
+
+    const gaugeLabelText = ci >= 0.85 ? 'DONE' : ci >= 0.55 ? 'MIXED' : 'SUS';
+    const gaugeLabelClass = ci >= 0.85 ? 'mint' : ci >= 0.55 ? 'amber' : 'coral';
+
+    const barPct = pct(ci);
+
+    /* Key stats */
+    const trialsLabel = model.n_trials + (model.n_trials === 1 ? ' trial' : ' trials');
+
+    return `<div class="standing-row${oracleClass}" role="listitem" data-model="${safeId}">
+  <div class="standing-rank">${rankLabel}</div>
+  <div class="standing-body">
+    <div class="standing-name">
+      ${safeId}${isOracle ? '<span class="oracle-badge">reference</span>' : ''}
+    </div>
+    <div class="standing-stats">
+      <div class="stat-item">
+        <span class="stat-value ${passRate >= 1 ? 'mint' : 'coral'}">${pct(passRate, 0)}</span>
+        <span class="stat-label">pass rate</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value ${scoreClass(ci)}" style="color:${ciColour}">${pct(ci, 0)}</span>
+        <span class="stat-label">completeness</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value ink">${trialsLabel}</span>
+        <span class="stat-label">&nbsp;</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value ink">${esc(costLabel)}</span>
+        <span class="stat-label">avg cost</span>
+      </div>
+    </div>
+    <div class="completeness-bar-wrap">
+      <div class="completeness-bar-track" role="progressbar" aria-valuenow="${(ci * 100).toFixed(0)}" aria-valuemin="0" aria-valuemax="100" aria-label="Completeness ${barPct}">
+        <div class="completeness-bar-fill" style="width:${barPct};background:${ciColour};"></div>
+      </div>
+      <span class="completeness-bar-label">${barPct} CI${spendingNote}</span>
+    </div>
+    <div class="standing-verdict">
+      <span class="verdict-note">${esc(verdictNote)}</span>
+    </div>
+    <div class="dim-breakdown" aria-label="Dimension breakdown">
+      ${dimChipsHTML(model.avg_dimension)}
+    </div>
+  </div>
+  <div class="standing-gauge" aria-hidden="true">
+    ${gaugeHTML}
+    <span class="standing-gauge-label" style="color:var(--${gaugeLabelClass})">${gaugeLabelText}</span>
+  </div>
+</div>`;
+  }
+
+  function renderStandings(data) {
+    const { models } = data;
+
+    /* Sort: oracle last (it's the reference), others by CI descending */
+    const sorted = Object.entries(models).sort(([idA, a], [idB, b]) => {
+      if (idA === 'oracle-gold') return 1;
+      if (idB === 'oracle-gold') return -1;
+      return modelCI(b.avg_dimension) - modelCI(a.avg_dimension);
+    });
+
+    let rank = 0;
+    const html = sorted
+      .map(([id, model]) => {
+        const isOracle = id === 'oracle-gold';
+        if (!isOracle) rank++;
+        return renderStandingRow(id, model, rank, isOracle);
+      })
+      .join('');
+
+    setHTML($('#standings'), html);
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     SECTION 3 — EVIDENCE
+  ══════════════════════════════════════════════════════════════════════ */
+
+  /**
+   * Classify a record into a verdict.
+   * Returns { cls, label } where cls is the CSS modifier and label is the display text.
+   */
+  function classifyRecord(rec) {
+    if (rec.gave_up) {
+      return { cls: 'v-gaveup', modifier: 'verdict-gaveup', label: 'GAVE UP · 0 LOC' };
+    }
+    if (rec.reward >= 1) {
+      return { cls: 'v-pass', modifier: 'verdict-pass', label: 'PASSED' };
+    }
+    if (rec.gaps.length > 0) {
+      return {
+        cls: 'v-incomplete',
+        modifier: 'verdict-incomplete',
+        label: `INCOMPLETE · ${rec.gaps.length} gap${rec.gaps.length > 1 ? 's' : ''}`,
       };
-      row.addEventListener('click', toggle);
-      row.addEventListener('keydown', (e) => {
+    }
+    /* 0 gaps, 0 reward = behaviorally wrong but structurally clean */
+    return { cls: 'v-wrong', modifier: 'verdict-wrong', label: 'WRONG · 0 gaps' };
+  }
+
+  function renderEvidenceEntry(rec, idx) {
+    const verdict = classifyRecord(rec);
+    const safeModel = esc(rec.model);
+    const safeTask = esc(rec.task_id);
+    const safeLang = esc(rec.language);
+
+    const totalTokens =
+      rec.tokens.input != null && rec.tokens.output != null
+        ? rec.tokens.input + rec.tokens.output
+        : null;
+
+    const costStr = rec.cost_usd != null ? usd(rec.cost_usd) : '—';
+    const tokStr = totalTokens != null ? tokM(totalTokens) : '—';
+    const locStr =
+      rec.gave_up === true
+        ? '0 prod LOC (gave up)'
+        : rec.prod_added_lines != null
+        ? rec.prod_added_lines + ' prod LOC'
+        : '—';
+
+    /* Gaps HTML — build detail list and the collapsed summary chip row */
+    let gapsHTML = '';
+    if (rec.gaps.length === 0) {
+      gapsHTML = `<p class="no-gaps-note">No static gaps — ${rec.reward >= 1 ? 'implementation complete.' : 'failure was behavioral, not structural.'}</p>`;
+    } else {
+      const summaryChips = rec.gaps
+        .slice(0, 3)
+        .map((g) => {
+          const rule = esc(g.rule || '');
+          const file = esc(g.file || '?');
+          const line = g.line != null ? ':' + Number(g.line) : '';
+          return `<span class="gap-rule-tag">${rule}</span><span class="gap-file-ref">${file}${line}</span>`;
+        })
+        .join(' ');
+
+      const moreCount = rec.gaps.length > 3 ? ` +${rec.gaps.length - 3} more` : '';
+      const detailItems = rec.gaps
+        .map((g) => {
+          const rule = esc(g.rule || '');
+          const file = esc(g.file || '?');
+          const line = g.line != null ? ':' + Number(g.line) : '';
+          const evidence = esc(g.evidence || '');
+          return `<div class="gap-chip">
+  <span class="gap-rule-tag">${rule}</span>
+  <span class="gap-file-ref">${file}${line}</span>
+  <span class="gap-evidence-text">${evidence}</span>
+</div>`;
+        })
+        .join('');
+
+      gapsHTML = `
+<div class="entry-gaps">
+  <button class="entry-expand-btn" aria-expanded="false" aria-controls="gaps-detail-${idx}" data-idx="${idx}">
+    <span class="expand-arrow">&#9654;</span>
+    ${rec.gaps.length} gap${rec.gaps.length > 1 ? 's' : ''} — show evidence${esc(moreCount)}
+  </button>
+  <div class="entry-gaps-detail hidden" id="gaps-detail-${idx}">
+    ${detailItems}
+  </div>
+</div>`;
+    }
+
+    return `<div class="evidence-entry ${verdict.modifier}" role="listitem">
+  <div class="entry-header">
+    <span class="entry-model">${safeModel}</span>
+    <span class="entry-task">${safeTask}</span>
+    <span class="entry-lang">${safeLang}</span>
+  </div>
+  <span class="entry-verdict ${verdict.cls}">${verdict.label}</span>
+  <div class="entry-meta">
+    <span><strong>cost</strong> ${esc(costStr)}</span>
+    <span><strong>tokens</strong> ${esc(tokStr)}</span>
+    <span><strong>LOC</strong> ${esc(locStr)}</span>
+  </div>
+  ${gapsHTML}
+</div>`;
+  }
+
+  function renderEvidence(data) {
+    const { records } = data;
+
+    /* Sort: gave-up first, then by gap count descending, then by cost descending */
+    const sorted = [...records].sort((a, b) => {
+      /* Oracle (passed) at the very end */
+      if (a.reward >= 1 && b.reward < 1) return 1;
+      if (b.reward >= 1 && a.reward < 1) return -1;
+      /* Gave-up first */
+      if (a.gave_up && !b.gave_up) return -1;
+      if (b.gave_up && !a.gave_up) return 1;
+      /* Most gaps first */
+      if (b.gaps.length !== a.gaps.length) return b.gaps.length - a.gaps.length;
+      /* Most expensive first as tiebreaker */
+      return (b.cost_usd || 0) - (a.cost_usd || 0);
+    });
+
+    const html = sorted.map((rec, i) => renderEvidenceEntry(rec, i)).join('');
+    setHTML($('#evidence-list'), html);
+
+    /* Wire up expand buttons */
+    $$('.entry-expand-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        const detail = $('#gaps-detail-' + btn.dataset.idx);
+        if (detail) detail.classList.toggle('hidden', expanded);
+      });
+      btn.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          toggle();
+          btn.click();
         }
       });
     });
   }
 
-  /* ── boot ── */
+  /* ══════════════════════════════════════════════════════════════════════
+     PAGE-LOAD ANIMATION
+  ══════════════════════════════════════════════════════════════════════ */
+
+  function setupRevealAnimation() {
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReduced) return;
+
+    document.body.classList.add('anim-ready');
+
+    const sections = ['.masthead', '.hero-section', '.standings-section', '.evidence-section'];
+    sections.forEach((sel, i) => {
+      const el = $(sel);
+      if (!el) return;
+      el.classList.add('reveal-item');
+      /* Stagger based on index */
+      const delay = i * 90 + 20;
+      setTimeout(() => el.classList.add('is-visible'), delay);
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     MAIN RENDER
+  ══════════════════════════════════════════════════════════════════════ */
+
+  function render(data) {
+    const { generated_at } = data;
+
+    /* Dateline — textContent only */
+    const genEl = $('#generated-at');
+    if (genEl) genEl.textContent = fmtDate(generated_at);
+
+    /* Sections */
+    renderHero(data);
+    renderStandings(data);
+    renderEvidence(data);
+
+    /* Animations */
+    setupRevealAnimation();
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     BOOT
+  ══════════════════════════════════════════════════════════════════════ */
+
   function boot() {
-    if (!window.TRUSTMEBRO_RESULTS) {
-      /* Build error UI with DOM methods — no innerHTML */
+    const data = window.TRUSTMEBRO_RESULTS;
+    if (!data) {
       const wrap = document.createElement('div');
-      wrap.style.cssText = 'padding:4rem;text-align:center;font-family:system-ui;color:#DC2626';
+      wrap.style.cssText = 'padding:4rem;font-family:sans-serif;color:#EA5440';
       const h = document.createElement('h2');
       h.textContent = 'results.js not loaded';
       const p = document.createElement('p');
@@ -358,7 +515,7 @@
       document.body.appendChild(wrap);
       return;
     }
-    render(window.TRUSTMEBRO_RESULTS);
+    render(data);
   }
 
   if (document.readyState === 'loading') {

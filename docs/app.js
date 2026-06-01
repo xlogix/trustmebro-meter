@@ -144,25 +144,18 @@
     }
 
     const priciestCost = priciest ? usd(priciest.cost_usd) : '?';
-    const priciestTok = priciest
-      ? tokM((priciest.tokens.input || 0) + (priciest.tokens.output || 0))
-      : '?';
+    const priciestTok = priciest ? tokM((priciest.tokens.input || 0) + (priciest.tokens.output || 0)) : '?';
 
     /* Overall GLM completeness: average CI across non-oracle models */
     const glmModelEntries = Object.entries(models).filter(([id]) => id !== 'oracle-gold');
-    const overallCI =
-      glmModelEntries.length
-        ? glmModelEntries.reduce((sum, [, m]) => sum + modelCI(m.avg_dimension), 0) /
-          glmModelEntries.length
-        : 0;
+    const overallCI = glmModelEntries.length
+      ? glmModelEntries.reduce((sum, [, m]) => sum + modelCI(m.avg_dimension), 0) / glmModelEntries.length
+      : 0;
 
     /* Headline — no data strings interpolated (only numbers/literals) */
     const headlineEl = $('#hero-headline');
     const passWord = passed === 0 ? '<span class="accent-zero">zero</span>' : String(passed);
-    setHTML(
-      headlineEl,
-      `GLM passed ${passWord} of ${total} real feature tasks.`
-    );
+    setHTML(headlineEl, `GLM passed ${passWord} of ${total} real feature tasks.`);
 
     /* Deck */
     const deckEl = $('#hero-deck');
@@ -173,7 +166,7 @@
     setHTML(
       deckEl,
       `${gaveUpPhrase}The priciest run burned <strong>${esc(priciestCost)}</strong> and ` +
-        `<strong>${esc(priciestTok)} tokens</strong> — and still failed.`
+        `<strong>${esc(priciestTok)} tokens</strong> — and still failed.`,
     );
 
     /* Hero gauge */
@@ -187,10 +180,10 @@
 
   const DIM_LABELS = {
     behavioral_coverage: 'Behavioral',
-    integration:         'Integration',
-    test_honesty:        'Test honesty',
-    stubs_left:          'Stubs clean',
-    error_path:          'Error paths',
+    integration: 'Integration',
+    test_honesty: 'Test honesty',
+    stubs_left: 'Stubs clean',
+    error_path: 'Error paths',
   };
 
   function dimChipsHTML(avgDim) {
@@ -348,9 +341,7 @@
     const safeLang = esc(rec.language);
 
     const totalTokens =
-      rec.tokens.input != null && rec.tokens.output != null
-        ? rec.tokens.input + rec.tokens.output
-        : null;
+      rec.tokens.input != null && rec.tokens.output != null ? rec.tokens.input + rec.tokens.output : null;
 
     const costStr = rec.cost_usd != null ? usd(rec.cost_usd) : '—';
     const tokStr = totalTokens != null ? tokM(totalTokens) : '—';
@@ -358,8 +349,8 @@
       rec.gave_up === true
         ? '0 prod LOC (gave up)'
         : rec.prod_added_lines != null
-        ? rec.prod_added_lines + ' prod LOC'
-        : '—';
+          ? rec.prod_added_lines + ' prod LOC'
+          : '—';
 
     /* Gaps HTML — build detail list and the collapsed summary chip row */
     let gapsHTML = '';

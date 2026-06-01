@@ -43,6 +43,7 @@ coverage
 .claude
 .superpowers
 .husky/_
+.playwright-mcp
 
 # git worktrees
 .worktrees/

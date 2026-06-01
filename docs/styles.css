@@ -7,58 +7,60 @@
 /* ── Design tokens ── */
 :root {
   /* Paper & ink */
-  --paper:       #FBF4E9;
-  --paper-warm:  #FFFDF8;
-  --paper-shade: #F3EAD8;
-  --ink:         #221C49;
-  --ink-soft:    #5A5478;
-  --ink-ghost:   #9590B0;
+  --paper: #fbf4e9;
+  --paper-warm: #fffdf8;
+  --paper-shade: #f3ead8;
+  --ink: #221c49;
+  --ink-soft: #5a5478;
+  --ink-ghost: #9590b0;
 
   /* Brand accents */
-  --coral:       #EA5440;
-  --coral-light: #FFF0EE;
-  --coral-mid:   #F4897A;
-  --mint:        #1C9A68;
-  --mint-light:  #EDF7F2;
-  --amber:       #E0922B;
-  --amber-light: #FEF6E8;
+  --coral: #ea5440;
+  --coral-light: #fff0ee;
+  --coral-mid: #f4897a;
+  --mint: #1c9a68;
+  --mint-light: #edf7f2;
+  --amber: #e0922b;
+  --amber-light: #fef6e8;
 
   /* Editorial structure */
-  --rule:        #221C49;     /* hairline ink rule */
-  --rule-light:  #D8D2EE;     /* softer divider */
-  --rule-coral:  #EA5440;     /* accent rule */
+  --rule: #221c49; /* hairline ink rule */
+  --rule-light: #d8d2ee; /* softer divider */
+  --rule-coral: #ea5440; /* accent rule */
 
   /* Typography */
   --font-display: 'Fraunces', 'Georgia', 'Times New Roman', serif;
-  --font-ui:      'Hanken Grotesk', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif;
-  --font-mono:    'JetBrains Mono', 'Fira Code', 'Courier New', Courier, monospace;
+  --font-ui: 'Hanken Grotesk', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', Courier, monospace;
 
   /* Fluid type scale */
-  --text-xs:   clamp(0.65rem,  0.6rem + 0.25vw, 0.72rem);
-  --text-sm:   clamp(0.78rem,  0.72rem + 0.3vw,  0.875rem);
-  --text-base: clamp(0.9rem,   0.85rem + 0.25vw, 1rem);
-  --text-md:   clamp(1rem,     0.92rem + 0.4vw,  1.15rem);
-  --text-lg:   clamp(1.1rem,   1rem + 0.55vw,    1.35rem);
-  --text-xl:   clamp(1.35rem,  1.1rem + 1.25vw,  2rem);
-  --text-2xl:  clamp(1.8rem,   1.4rem + 2vw,     2.8rem);
-  --text-3xl:  clamp(2.2rem,   1.6rem + 3vw,     4rem);
-  --text-hero: clamp(2.6rem,   1.8rem + 4vw,     5.2rem);
+  --text-xs: clamp(0.65rem, 0.6rem + 0.25vw, 0.72rem);
+  --text-sm: clamp(0.78rem, 0.72rem + 0.3vw, 0.875rem);
+  --text-base: clamp(0.9rem, 0.85rem + 0.25vw, 1rem);
+  --text-md: clamp(1rem, 0.92rem + 0.4vw, 1.15rem);
+  --text-lg: clamp(1.1rem, 1rem + 0.55vw, 1.35rem);
+  --text-xl: clamp(1.35rem, 1.1rem + 1.25vw, 2rem);
+  --text-2xl: clamp(1.8rem, 1.4rem + 2vw, 2.8rem);
+  --text-3xl: clamp(2.2rem, 1.6rem + 3vw, 4rem);
+  --text-hero: clamp(2.6rem, 1.8rem + 4vw, 5.2rem);
 
   /* Spacing rhythm */
-  --space-1:  clamp(0.25rem, 0.5vw, 0.5rem);
-  --space-2:  clamp(0.5rem,  1vw,   0.75rem);
-  --space-3:  clamp(0.75rem, 1.5vw, 1rem);
-  --space-4:  clamp(1rem,    2vw,   1.5rem);
-  --space-6:  clamp(1.5rem,  3vw,   2.5rem);
-  --space-8:  clamp(2rem,    4vw,   3.5rem);
-  --space-12: clamp(3rem,    6vw,   5rem);
+  --space-1: clamp(0.25rem, 0.5vw, 0.5rem);
+  --space-2: clamp(0.5rem, 1vw, 0.75rem);
+  --space-3: clamp(0.75rem, 1.5vw, 1rem);
+  --space-4: clamp(1rem, 2vw, 1.5rem);
+  --space-6: clamp(1.5rem, 3vw, 2.5rem);
+  --space-8: clamp(2rem, 4vw, 3.5rem);
+  --space-12: clamp(3rem, 6vw, 5rem);
 
   /* Container */
   --content-width: 1080px;
 }
 
 /* ── Reset ── */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -226,7 +228,7 @@ body {
   font-size: var(--text-hero);
   font-weight: 900;
   color: var(--ink);
-  line-height: 1.0;
+  line-height: 1;
   font-optical-sizing: auto;
   letter-spacing: -0.03em;
   margin-bottom: var(--space-4);
@@ -408,10 +410,18 @@ body {
   line-height: 1;
 }
 
-.stat-value.coral   { color: var(--coral); }
-.stat-value.mint    { color: var(--mint); }
-.stat-value.amber   { color: var(--amber); }
-.stat-value.ink     { color: var(--ink); }
+.stat-value.coral {
+  color: var(--coral);
+}
+.stat-value.mint {
+  color: var(--mint);
+}
+.stat-value.amber {
+  color: var(--amber);
+}
+.stat-value.ink {
+  color: var(--ink);
+}
 
 .stat-label {
   font-family: var(--font-ui);
@@ -508,10 +518,22 @@ body {
   line-height: 1.5;
 }
 
-.dim-chip.chip-pass  { background: var(--mint-light);  color: var(--mint); }
-.dim-chip.chip-fail  { background: var(--coral-light); color: var(--coral); }
-.dim-chip.chip-mid   { background: var(--amber-light); color: var(--amber); }
-.dim-chip.chip-na    { background: var(--paper-shade); color: var(--ink-ghost); }
+.dim-chip.chip-pass {
+  background: var(--mint-light);
+  color: var(--mint);
+}
+.dim-chip.chip-fail {
+  background: var(--coral-light);
+  color: var(--coral);
+}
+.dim-chip.chip-mid {
+  background: var(--amber-light);
+  color: var(--amber);
+}
+.dim-chip.chip-na {
+  background: var(--paper-shade);
+  color: var(--ink-ghost);
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    SECTION 3 — EVIDENCE
@@ -618,10 +640,24 @@ body {
   margin-bottom: var(--space-2);
 }
 
-.entry-verdict.v-gaveup     { background: var(--coral);       color: #fff; }
-.entry-verdict.v-incomplete { background: var(--amber-light); color: var(--amber); border: 1px solid var(--amber); }
-.entry-verdict.v-wrong      { background: var(--paper-shade); color: var(--ink-soft); }
-.entry-verdict.v-pass       { background: var(--mint-light);  color: var(--mint); border: 1px solid var(--mint); }
+.entry-verdict.v-gaveup {
+  background: var(--coral);
+  color: #fff;
+}
+.entry-verdict.v-incomplete {
+  background: var(--amber-light);
+  color: var(--amber);
+  border: 1px solid var(--amber);
+}
+.entry-verdict.v-wrong {
+  background: var(--paper-shade);
+  color: var(--ink-soft);
+}
+.entry-verdict.v-pass {
+  background: var(--mint-light);
+  color: var(--mint);
+  border: 1px solid var(--mint);
+}
 
 /* Meta line: cost + tokens */
 .entry-meta {
@@ -692,7 +728,7 @@ body {
   transition: transform 0.2s ease;
 }
 
-.entry-expand-btn[aria-expanded="true"] .expand-arrow {
+.entry-expand-btn[aria-expanded='true'] .expand-arrow {
   transform: rotate(90deg);
 }
 
@@ -748,8 +784,16 @@ body {
 
 /* Animation for needle */
 @keyframes needle-sweep {
-  from { transform-origin: 50% 75%; transform: rotate(-80deg) scale(0.95); opacity: 0; }
-  to   { transform-origin: 50% 75%; transform: rotate(0deg) scale(1);     opacity: 1; }
+  from {
+    transform-origin: 50% 75%;
+    transform: rotate(-80deg) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform-origin: 50% 75%;
+    transform: rotate(0deg) scale(1);
+    opacity: 1;
+  }
 }
 
 .gauge-needle-animated {
@@ -840,10 +884,18 @@ body {
   }
 }
 
-.masthead          { --reveal-delay: 0ms; }
-.hero-section      { --reveal-delay: 80ms; }
-.standings-section { --reveal-delay: 200ms; }
-.evidence-section  { --reveal-delay: 320ms; }
+.masthead {
+  --reveal-delay: 0ms;
+}
+.hero-section {
+  --reveal-delay: 80ms;
+}
+.standings-section {
+  --reveal-delay: 200ms;
+}
+.evidence-section {
+  --reveal-delay: 320ms;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .anim-ready .reveal-item,

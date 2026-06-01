@@ -9,6 +9,7 @@
  * CLI: bun run bench/run-bridge.ts --job <jobDir> --tasks <tasksDir> --model <label> [--now <iso>]
  */
 
+import { existsSync } from 'node:fs';
 import { parse as parseToml } from 'smol-toml';
 import { runGate } from '../cli/gate.ts';
 import type { RubricDimension } from '../core/model/types.ts';
@@ -153,7 +154,9 @@ async function pathExists(p: string): Promise<boolean> {
 // ---------------------------------------------------------------------------
 
 async function ensureClone(repoUrl: string, cacheDir: string): Promise<void> {
-  if (await pathExists(`${cacheDir}/.git`)) {
+  // `.git` is a directory; Bun.file().exists() only reports files, so use a
+  // real directory check here — otherwise we re-clone over an existing repo.
+  if (existsSync(`${cacheDir}/.git`)) {
     // Already cloned — nothing to do.
     return;
   }
@@ -174,6 +177,10 @@ async function setupWorkspace(
 ): Promise<'clean' | '3way' | 'patch-p1' | null> {
   // Create a fresh copy of the repo at the base commit.
   // We copy instead of using worktrees so each trial is fully independent.
+  // Remove any stale workdir from a prior run so the local clone is idempotent.
+  if (existsSync(workDir)) {
+    await run(['rm', '-rf', workDir]);
+  }
   await run(['git', 'clone', '--quiet', '--local', cloneDir, workDir]);
   await run(['git', 'checkout', '--quiet', baseCommit], { cwd: workDir });
 

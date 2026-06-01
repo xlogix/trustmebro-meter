@@ -209,9 +209,12 @@
 
     // LOC cell — show gave-up pill when applicable, otherwise show prod LOC count
     const prodLoc = rec.prod_added_lines != null ? rec.prod_added_lines : null;
-    const locCellHTML = rec.gave_up === true
-      ? `<span class="gave-up-pill" aria-label="gave up, 0 production lines">gave up · 0 LOC</span>`
-      : (prodLoc != null ? `<span class="loc-val">${prodLoc}</span>` : '—');
+    const locCellHTML =
+      rec.gave_up === true
+        ? `<span class="gave-up-pill" aria-label="gave up, 0 production lines">gave up · 0 LOC</span>`
+        : prodLoc != null
+          ? `<span class="loc-val">${prodLoc}</span>`
+          : '—';
 
     const gapsHTML =
       rec.gaps.length === 0
@@ -278,9 +281,7 @@
     const tokensMFormatted = priciestTokens > 0 ? (priciestTokens / 1_000_000).toFixed(0) + 'M' : '?';
     const costFormatted = priciestCost > 0 ? '$' + priciestCost.toFixed(2) : '?';
 
-    const gaveUpPhrase = glmGaveUp > 0
-      ? ` <strong>${glmGaveUp}</strong> gave up without writing a line.`
-      : '';
+    const gaveUpPhrase = glmGaveUp > 0 ? ` <strong>${glmGaveUp}</strong> gave up without writing a line.` : '';
 
     return {
       html: `GLM models passed <strong>0 of ${totalGlmTasks}</strong> real feature tasks.${gaveUpPhrase} The priciest attempt burned <strong>${costFormatted}</strong> and <strong>${tokensMFormatted} tokens</strong> — and still failed.`,

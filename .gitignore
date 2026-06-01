@@ -1,0 +1,54 @@
+# dependencies
+node_modules
+
+# production builds
+build
+dist
+*.tsbuildinfo
+
+# env files (keep .env.example)
+.env
+.env.local
+.env.*.local
+
+# os
+.DS_Store
+Thumbs.db
+
+# debug logs
+npm-debug.log*
+.pnpm-debug.log*
+
+# bun
+*.bun
+
+# python / uv (Pier is a uv-managed Python tool we shell out to)
+.venv/
+__pycache__/
+*.pyc
+
+# pier / run artifacts (trajectories, sandboxed run outputs, scoring reports)
+.pier/
+runs/
+reports/
+
+# testing
+coverage
+
+# editors
+.vscode/
+.idea/
+
+# tooling
+.claude
+.superpowers
+.husky/_
+
+# git worktrees
+.worktrees/
+
+# secrets
+*.pem
+
+# Scratch dir for one-off outputs (sample reports, audit dumps). Never committed.
+/tmp/

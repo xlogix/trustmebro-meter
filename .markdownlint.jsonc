@@ -1,0 +1,37 @@
+{
+  // Markdown lint configuration for trustmebro.
+  //
+  // Rules are relaxed to match the writing style of plans/ design docs and
+  // README files: wide spec/comparison tables, fenced blocks used for
+  // directory trees and command output (no language), bold-as-subheading in
+  // design docs, and section names repeated across phased plan documents.
+  "default": true,
+
+  // Line length — comparison/spec tables are intentionally wider than 80 chars.
+  "MD013": false,
+
+  // Table column alignment — variable-width content rows; strict alignment
+  // would mean padding every row across many design docs to no real benefit.
+  "MD060": false,
+
+  // Bold-as-heading — design docs use **Title** as an informal subheading.
+  "MD036": false,
+
+  // Duplicate headings — phased plans repeat "Risks", "Open questions", etc.
+  // Restrict to flagging same-name headings only when direct siblings.
+  "MD024": { "siblings_only": true },
+
+  // Fenced code blocks without a language — many fences hold directory trees,
+  // transcripts, or command output where a language tag is meaningless.
+  "MD040": false,
+
+  // Single top-level heading — phased plan docs use `# Phase 1 — …` dividers.
+  "MD025": false,
+
+  // Heading increment — design docs sometimes jump H1 → H3 for detail blocks.
+  "MD001": false,
+
+  // Inline HTML — design docs reference placeholders like `<task-id>`, `<model>`
+  // that markdown reads as tags. These are documentation placeholders.
+  "MD033": false,
+}

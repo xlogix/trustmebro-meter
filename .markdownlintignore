@@ -1,0 +1,8 @@
+node_modules
+.claude
+.superpowers
+.husky/_
+coverage
+dist
+bun.lock
+corpus

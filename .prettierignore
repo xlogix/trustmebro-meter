@@ -1,0 +1,9 @@
+node_modules
+.claude
+.superpowers
+.husky/_
+coverage
+dist
+bun.lock
+# Corpus tasks are third-party repo snapshots + withheld solutions — data, not source.
+corpus

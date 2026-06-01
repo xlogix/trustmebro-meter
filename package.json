@@ -1,0 +1,41 @@
+{
+  "name": "trustmebro",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A benchmark machine that measures whether agent-built features are actually finished end-to-end — not just whether they pass a test.",
+  "type": "module",
+  "bin": {
+    "trustmebro": "./cli/index.ts"
+  },
+  "scripts": {
+    "trustmebro": "bun run cli/index.ts",
+    "typecheck": "bun x tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "bun test",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/bun": "^1.2.0",
+    "@types/node": "~25.9.0",
+    "eslint": "^10.4.0",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.3",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.4"
+  },
+  "lint-staged": {
+    "**/*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "**/*.{json,md,toml}": [
+      "prettier --write"
+    ]
+  }
+}

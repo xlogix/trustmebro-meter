@@ -1,0 +1,21 @@
+[meta]
+provenance = "novel"
+canary = "TRUSTMEBRO-FIXTURE-0001"
+
+[[criteria]]
+id = "list-renders-from-api"
+description = "The list renders items fetched from GET /api/items, not a hardcoded stub."
+weight = 1.0
+critical = true
+
+[[criteria]]
+id = "empty-state"
+description = "When the API returns [], an empty-state message shows."
+weight = 0.5
+critical = false
+
+[static_gaps]
+rules = ["leftover-stub", "skipped-tests", "unwired-export"]
+
+[scoring]
+dimensions = { behavioral_coverage = 0.4, integration = 0.2, error_path = 0.15, test_honesty = 0.15, stubs_left = 0.1 }

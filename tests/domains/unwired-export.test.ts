@@ -22,3 +22,24 @@ test('flags an exported symbol referenced nowhere else', async () => {
   expect(findings[0]!.evidence).toContain('UNUSED');
   expect(findings[0]!.dimension).toBe('integration');
 });
+
+test('flags UNUSED when workspaceDir has a trailing slash', async () => {
+  const dir = `/tmp/tmb-unwired-trailing-${Date.now()}`;
+  await Bun.write(
+    `${dir}/src/ItemsList.tsx`,
+    'export function ItemsList() { return null; }\nexport const UNUSED = 1;\n',
+  );
+  await Bun.write(
+    `${dir}/src/App.tsx`,
+    "import { ItemsList } from './ItemsList';\nexport const App = () => ItemsList();\n",
+  );
+
+  const findings = await unwiredExport.run({
+    workspaceDir: `${dir}/`, // trailing slash — must not break matching
+    changedFiles: [{ path: 'src/ItemsList.tsx', addedLines: [1, 2] }],
+  });
+
+  // Same assertion as the base test: only UNUSED should be flagged.
+  expect(findings).toHaveLength(1);
+  expect(findings[0]!.evidence).toContain('UNUSED');
+});

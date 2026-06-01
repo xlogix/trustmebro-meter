@@ -26,19 +26,29 @@ function exportedSymbols(code: string, lang: Lang): ExportedSymbol[] {
 
 // Count files (other than the defining file) that mention the symbol as a word.
 async function referencedElsewhere(workspaceDir: string, definingPath: string, name: string): Promise<boolean> {
-  const proc = Bun.spawn(['rg', '--count-matches', '--glob', '!node_modules', '--word-regexp', name, workspaceDir], {
-    stdout: 'pipe',
-    stderr: 'ignore',
-  });
-  const out = await new Response(proc.stdout).text();
-  await proc.exited;
+  // Strip trailing slashes once so path comparisons against rg's output always match.
+  const root = workspaceDir.replace(/\/+$/, '');
+  let out: string;
+  try {
+    const proc = Bun.spawn(['rg', '--count-matches', '--glob', '!node_modules', '--word-regexp', name, root], {
+      stdout: 'pipe',
+      stderr: 'ignore',
+    });
+    out = await new Response(proc.stdout as ReadableStream).text();
+    await proc.exited;
+  } catch (err) {
+    throw new Error(
+      'unwired-export requires ripgrep (rg) on PATH. Install it (e.g. "brew install ripgrep") and retry. Underlying error: ' +
+        String(err),
+      { cause: err },
+    );
+  }
+  const absDefining = `${root}/${definingPath}`;
   for (const row of out.split('\n')) {
     if (!row.trim()) continue;
     const colonIdx = row.lastIndexOf(':');
     if (colonIdx === -1) continue;
     const filePath = row.slice(0, colonIdx);
-    // Normalise both paths so we can compare reliably regardless of trailing slashes.
-    const absDefining = `${workspaceDir}/${definingPath}`;
     if (filePath !== absDefining) return true;
   }
   return false;

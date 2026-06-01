@@ -119,14 +119,14 @@ corpus/<task-id>/
 
 ```toml
 [meta]
-provenance = "novel"          # novel | oss-derived | harvested-failure
-canary = "TRUSTMEBRO-<guid>"  # contamination tripwire
+provenance = "novel"         # novel | oss-derived | harvested-failure
+canary = "TRUSTMEBRO-<guid>" # contamination tripwire
 
-[[criteria]]                  # graded behavioral coverage
+[[criteria]] # graded behavioral coverage
 id = "list-renders-from-api"
 description = "The list view renders items fetched from GET /api/items, not a hardcoded stub."
 weight = 1.0
-critical = true               # must pass for a binary PASS
+critical = true                                                                                # must pass for a binary PASS
 
 [[criteria]]
 id = "empty-state"
@@ -134,7 +134,7 @@ description = "When the API returns [], an empty-state message shows instead of 
 weight = 0.5
 critical = false
 
-[static_gaps]                 # which deterministic checks apply
+[static_gaps] # which deterministic checks apply
 rules = ["unwired-component", "endpoint-never-called", "skipped-or-empty-tests", "leftover-stub", "dead-error-path"]
 
 [scoring]

@@ -22,9 +22,22 @@ async function gate(argv: string[]): Promise<number> {
     return 1;
   }
   const diffPath = flag(argv, '--diff');
-  const diffText = diffPath
-    ? await Bun.file(diffPath).text()
-    : await new Response(Bun.spawn(['git', '-C', workdir, 'diff', 'HEAD'], { stdout: 'pipe' }).stdout).text();
+  let diffText: string;
+  if (diffPath) {
+    diffText = await Bun.file(diffPath).text();
+  } else {
+    const proc = Bun.spawn(['git', '-C', workdir, 'diff', 'HEAD'], { stdout: 'pipe', stderr: 'pipe' });
+    diffText = await new Response(proc.stdout).text();
+    const code = await proc.exited;
+    if (code !== 0) {
+      const stderr = (await new Response(proc.stderr).text()).trim();
+      console.error(
+        `gate: could not compute a diff for "${workdir}" via \`git diff HEAD\` (git exit ${code}). ` +
+          `Pass --diff <file>, or run inside a git repo with at least one commit.${stderr ? '\n' + stderr : ''}`,
+      );
+      return 1;
+    }
+  }
 
   const resultsPath = flag(argv, '--results');
   const results: CriterionResult[] = resultsPath ? JSON.parse(await Bun.file(resultsPath).text()) : [];

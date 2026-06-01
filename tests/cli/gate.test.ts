@@ -1,6 +1,17 @@
 import { expect, test } from 'bun:test';
 import { runGate } from '../../cli/gate.ts';
 
+test('gate exits 1 (tool error) when it cannot compute a diff, not a fake INCOMPLETE', async () => {
+  const dir = `/tmp/tmb-nogit-${Date.now()}`;
+  await Bun.write(`${dir}/trustmebro.toml`, '[meta]\nprovenance = "novel"\n');
+  const cliPath = new URL('../../cli/index.ts', import.meta.url).pathname;
+  const proc = Bun.spawn(['bun', 'run', cliPath, 'gate', dir], { stdout: 'pipe', stderr: 'pipe' });
+  const code = await proc.exited;
+  const stderr = await new Response(proc.stderr).text();
+  expect(code).toBe(1); // NOT 2 (incomplete) and NOT 0
+  expect(stderr).toMatch(/could not compute a diff/i);
+});
+
 test('gate produces a report flagging stub + skipped + unwired on the fixture', async () => {
   const dir = `/tmp/tmb-gate-${Date.now()}`;
   await Bun.write(

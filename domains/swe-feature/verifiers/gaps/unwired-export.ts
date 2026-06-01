@@ -30,10 +30,23 @@ async function referencedElsewhere(workspaceDir: string, definingPath: string, n
   const root = workspaceDir.replace(/\/+$/, '');
   let out: string;
   try {
-    const proc = Bun.spawn(['rg', '--count-matches', '--glob', '!node_modules', '--word-regexp', name, root], {
-      stdout: 'pipe',
-      stderr: 'ignore',
-    });
+    const proc = Bun.spawn(
+      [
+        'rg',
+        '--count-matches',
+        '--glob',
+        '!node_modules',
+        '--glob',
+        '*.{ts,tsx,js,jsx,mjs,cjs,cts,mts}',
+        '--word-regexp',
+        name,
+        root,
+      ],
+      {
+        stdout: 'pipe',
+        stderr: 'ignore',
+      },
+    );
     out = await new Response(proc.stdout as ReadableStream).text();
     await proc.exited;
   } catch (err) {

@@ -52,3 +52,7 @@ coverage
 
 # Scratch dir for one-off outputs (sample reports, audit dumps). Never committed.
 /tmp/
+
+# bench: repo clone + worktree cache, and generated output records
+bench/.cache/
+bench/out/

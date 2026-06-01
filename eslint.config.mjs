@@ -13,21 +13,23 @@ export default [
       // Corpus task fixtures are third-party repo snapshots + withheld solutions;
       // they are data, not our source, and must not be linted.
       'corpus/**',
+      // bench caches contain cloned third-party repos — not our source.
+      'bench/.cache/**',
     ],
   },
 
   // Base rules for all TS files
   {
-    files: ['core/**/*.ts', 'pier/**/*.ts', 'domains/**/*.ts', 'cli/**/*.ts'],
+    files: ['core/**/*.ts', 'pier/**/*.ts', 'domains/**/*.ts', 'cli/**/*.ts', 'bench/**/*.ts'],
     ...js.configs.recommended,
   },
   ...tseslint.configs.recommended.map((config) => ({
     ...config,
-    files: ['core/**/*.ts', 'pier/**/*.ts', 'domains/**/*.ts', 'cli/**/*.ts'],
+    files: ['core/**/*.ts', 'pier/**/*.ts', 'domains/**/*.ts', 'cli/**/*.ts', 'bench/**/*.ts'],
   })),
 
   {
-    files: ['core/**/*.ts', 'pier/**/*.ts', 'domains/**/*.ts', 'cli/**/*.ts'],
+    files: ['core/**/*.ts', 'pier/**/*.ts', 'domains/**/*.ts', 'cli/**/*.ts', 'bench/**/*.ts'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],

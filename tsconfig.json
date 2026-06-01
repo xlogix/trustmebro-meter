@@ -13,6 +13,6 @@
       "@pier/*": ["./pier/*"]
     }
   },
-  "include": ["core", "pier", "domains", "cli"],
+  "include": ["core", "pier", "domains", "cli", "bench"],
   "exclude": ["node_modules", "corpus/**/solution", "**/dist"]
 }

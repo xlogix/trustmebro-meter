@@ -1,101 +1,107 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="trustmebro-meter: does the AI's 'it's done' actually check out? Benchmark completeness metrics beyond binary pass/fail.">
-  <title>trustmebro-meter — completeness results</title>
-  <link rel="stylesheet" href="./styles.css">
-</head>
-<body>
-
-  <!-- ═══════════════════════════════════════════════
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="trustmebro-meter: does the AI's 'it's done' actually check out? Benchmark completeness metrics beyond binary pass/fail."
+    />
+    <title>trustmebro-meter — completeness results</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <!-- ═══════════════════════════════════════════════
        HEADER
   ════════════════════════════════════════════════ -->
-  <header class="site-header" role="banner">
-    <div class="header-inner">
-      <a href="#" class="logo-link" aria-label="trustmebro-meter home">
-        <img src="./logo.svg" alt="trustmebro-meter logo: a confident LLM robot next to a spiking BS meter" class="logo-img">
-      </a>
-      <div class="header-text">
-        <h1 class="site-title">trustmebro-meter</h1>
-        <p class="site-tagline">does the AI's &ldquo;it&rsquo;s done&rdquo; actually check out?</p>
-        <p class="generated-at-line">Results as of <time id="generated-at">—</time></p>
-      </div>
-    </div>
-  </header>
-
-  <main id="main" class="page-main">
-
-    <!-- ─── HEADLINE STAT ─── -->
-    <section class="section headline-section" aria-label="Headline finding">
-      <div class="section-inner">
-        <p id="headline-stat" class="headline-stat neutral" role="status" aria-live="polite">
-          Loading&hellip;
-        </p>
-        <p class="thesis-blurb">
-          A model can <strong>pass</strong> the DeepSWE reward signal — yet still ship unwired code,
-          skipped tests, or leftover stubs. This benchmark makes that gap visible.
-        </p>
-      </div>
-    </section>
-
-    <!-- ─── LEADERBOARD ─── -->
-    <section class="section" aria-labelledby="leaderboard-heading">
-      <div class="section-inner">
-        <h2 class="section-heading" id="leaderboard-heading">
-          Model leaderboard
-          <span class="section-sub">sorted by completeness index (higher = more done)</span>
-        </h2>
-        <div id="leaderboard" class="leaderboard-grid" role="list" aria-label="Model leaderboard">
-          <p class="loading-msg">Loading leaderboard&hellip;</p>
+    <header class="site-header" role="banner">
+      <div class="header-inner">
+        <a href="#" class="logo-link" aria-label="trustmebro-meter home">
+          <img
+            src="./logo.svg"
+            alt="trustmebro-meter logo: a confident LLM robot next to a spiking BS meter"
+            class="logo-img"
+          />
+        </a>
+        <div class="header-text">
+          <h1 class="site-title">trustmebro-meter</h1>
+          <p class="site-tagline">does the AI's &ldquo;it&rsquo;s done&rdquo; actually check out?</p>
+          <p class="generated-at-line">Results as of <time id="generated-at">—</time></p>
         </div>
       </div>
-    </section>
+    </header>
 
-    <!-- ─── PER-TASK DETAIL ─── -->
-    <section class="section" aria-labelledby="tasks-heading">
-      <div class="section-inner">
-        <h2 class="section-heading" id="tasks-heading">
-          Per-task results
-          <span class="section-sub">click a row to expand gaps</span>
-        </h2>
-        <div class="table-scroll">
-          <table class="task-table" aria-label="Per-task benchmark results">
-            <thead>
-              <tr>
-                <th scope="col">Model</th>
-                <th scope="col">Task</th>
-                <th scope="col">Lang</th>
-                <th scope="col">Passed</th>
-                <th scope="col">Completeness</th>
-                <th scope="col">Gaps</th>
-              </tr>
-            </thead>
-            <tbody id="task-tbody">
-              <tr><td colspan="6" class="loading-msg">Loading&hellip;</td></tr>
-            </tbody>
-          </table>
+    <main id="main" class="page-main">
+      <!-- ─── HEADLINE STAT ─── -->
+      <section class="section headline-section" aria-label="Headline finding">
+        <div class="section-inner">
+          <p id="headline-stat" class="headline-stat neutral" role="status" aria-live="polite">Loading&hellip;</p>
+          <p class="thesis-blurb">
+            A model can <strong>pass</strong> the DeepSWE reward signal — yet still ship unwired code, skipped tests, or
+            leftover stubs. This benchmark makes that gap visible.
+          </p>
         </div>
-      </div>
-    </section>
+      </section>
 
-  </main>
+      <!-- ─── LEADERBOARD ─── -->
+      <section class="section" aria-labelledby="leaderboard-heading">
+        <div class="section-inner">
+          <h2 class="section-heading" id="leaderboard-heading">
+            Model leaderboard
+            <span class="section-sub">sorted by completeness index (higher = more done)</span>
+          </h2>
+          <div id="leaderboard" class="leaderboard-grid" role="list" aria-label="Model leaderboard">
+            <p class="loading-msg">Loading leaderboard&hellip;</p>
+          </div>
+        </div>
+      </section>
 
-  <!-- ═══════════════════════════════════════════════
+      <!-- ─── PER-TASK DETAIL ─── -->
+      <section class="section" aria-labelledby="tasks-heading">
+        <div class="section-inner">
+          <h2 class="section-heading" id="tasks-heading">
+            Per-task results
+            <span class="section-sub">click a row to expand gaps</span>
+          </h2>
+          <div class="table-scroll">
+            <table class="task-table" aria-label="Per-task benchmark results">
+              <thead>
+                <tr>
+                  <th scope="col">Model</th>
+                  <th scope="col">Task</th>
+                  <th scope="col">Lang</th>
+                  <th scope="col">Passed</th>
+                  <th scope="col">Completeness</th>
+                  <th scope="col">Prod LOC</th>
+                  <th scope="col">Cost</th>
+                  <th scope="col">Gaps</th>
+                </tr>
+              </thead>
+              <tbody id="task-tbody">
+                <tr>
+                  <td colspan="6" class="loading-msg">Loading&hellip;</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ═══════════════════════════════════════════════
        FOOTER
   ════════════════════════════════════════════════ -->
-  <footer class="site-footer" role="contentinfo">
-    <div class="footer-inner">
-      <p class="footer-method">
-        Completeness measured by deterministic static analysis + behavioral execution.
-        No LLM judge.
-      </p>
-      <p class="footer-sign">made with mild distrust of confident machines 🤖</p>
-    </div>
-  </footer>
+    <footer class="site-footer" role="contentinfo">
+      <div class="footer-inner">
+        <p class="footer-method">
+          Completeness measured by deterministic static analysis + behavioral execution. No LLM judge.
+        </p>
+        <p id="caveat-note" class="footer-caveat"></p>
+        <p class="footer-sign">made with mild distrust of confident machines 🤖</p>
+      </div>
+    </footer>
 
-  <script src="./results.js"></script>
-  <script src="./app.js"></script>
-</body>
+    <script src="./results.js"></script>
+    <script src="./app.js"></script>
+  </body>
 </html>

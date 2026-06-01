@@ -46,9 +46,7 @@
   /* ── completeness index for a single record's dimensions object ── */
   const recordCI = (dimensions) => {
     const dims = ['behavioral_coverage', 'integration', 'test_honesty', 'stubs_left'];
-    const vals = dims
-      .filter((d) => dimensions[d] && dimensions[d].evaluated)
-      .map((d) => dimensions[d].score);
+    const vals = dims.filter((d) => dimensions[d] && dimensions[d].evaluated).map((d) => dimensions[d].score);
     return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
   };
 
@@ -121,10 +119,10 @@
 
     const DIMS = [
       { key: 'behavioral_coverage', label: 'Behavioral' },
-      { key: 'integration',         label: 'Integration' },
-      { key: 'test_honesty',        label: 'Test honesty' },
-      { key: 'stubs_left',          label: 'Stubs left' },
-      { key: 'error_path',          label: 'Error paths' },
+      { key: 'integration', label: 'Integration' },
+      { key: 'test_honesty', label: 'Test honesty' },
+      { key: 'stubs_left', label: 'Stubs left' },
+      { key: 'error_path', label: 'Error paths' },
     ];
 
     const dimBarsHTML = DIMS.map((d) => {
@@ -132,14 +130,19 @@
       return dimBar(d.label, val, d.key !== 'error_path');
     }).join('');
 
-    const gapDeltaHTML = gap > 0.02
-      ? `<span class="gap-delta">−${pct(gap)}</span>`
-      : `<span class="gap-delta ok">≈</span>`;
+    const gapDeltaHTML =
+      gap > 0.02 ? `<span class="gap-delta">−${pct(gap)}</span>` : `<span class="gap-delta ok">≈</span>`;
 
     const gaugeLabel = ci >= 0.85 ? 'DONE ✓' : ci >= 0.55 ? 'MOSTLY' : 'SUS ⚠';
 
     // modelId is from the data file — escape it before placing in HTML
     const safeModelId = esc(modelId);
+
+    // Honest caption: when 0 gaps AND 0 pass rate, clarify that clean = behavioral failure, not stubs
+    const honestGapsCaption =
+      model.gaps_per_trial === 0 && passRate === 0
+        ? `<p class="honest-gaps-note">0 static gaps — failures were behavioral, not stubs</p>`
+        : '';
 
     return `<div class="lb-card" data-model="${safeModelId}">
   <div class="lb-card-header">
@@ -177,6 +180,7 @@
         <div class="metric-lbl">avg cost</div>
       </div>
     </div>
+    ${honestGapsCaption}
   </div>
   <div class="lb-gauge-wrap">
     ${bsMeterSVG(ci, rank)}
@@ -198,22 +202,35 @@
     const ci = recordCI(rec.dimensions);
     const ciLabel = ci != null ? pct(ci) : '—';
     const ciColour = ci != null ? scoreColour(ci) : '#6B7280';
-    const passIcon = rec.reward >= 1
-      ? `<span class="badge pass" aria-label="passed">✓</span>`
-      : `<span class="badge fail" aria-label="failed">✗</span>`;
+    const passIcon =
+      rec.reward >= 1
+        ? `<span class="badge pass" aria-label="passed">✓</span>`
+        : `<span class="badge fail" aria-label="failed">✗</span>`;
 
-    const gapsHTML = rec.gaps.length === 0
-      ? '<p class="no-gaps">No gaps found — clean!</p>'
-      : rec.gaps.map((g) => {
-          const loc = esc(g.file || '?') + (g.line ? ':' + Number(g.line) : '');
-          const rule = esc(g.rule || '');
-          const evidence = esc(g.evidence || '');
-          return `<div class="gap-item">
+    // LOC cell — show gave-up pill when applicable, otherwise show prod LOC count
+    const prodLoc = rec.prod_added_lines != null ? rec.prod_added_lines : null;
+    const locCellHTML = rec.gave_up === true
+      ? `<span class="gave-up-pill" aria-label="gave up, 0 production lines">gave up · 0 LOC</span>`
+      : (prodLoc != null ? `<span class="loc-val">${prodLoc}</span>` : '—');
+
+    const gapsHTML =
+      rec.gaps.length === 0
+        ? '<p class="no-gaps">No gaps found — clean!</p>'
+        : rec.gaps
+            .map((g) => {
+              const loc = esc(g.file || '?') + (g.line ? ':' + Number(g.line) : '');
+              const rule = esc(g.rule || '');
+              const evidence = esc(g.evidence || '');
+              return `<div class="gap-item">
   <span class="gap-loc">${loc}</span>
   <span class="gap-rule">[${rule}]</span>
   <span class="gap-evidence">${evidence}</span>
 </div>`;
-        }).join('');
+            })
+            .join('');
+
+    // Cost cell — show per-task cost if available
+    const costLabel = rec.cost_usd != null ? '$' + rec.cost_usd.toFixed(2) : '—';
 
     return `<tr class="task-row" data-idx="${idx}" tabindex="0" role="button" aria-expanded="false">
   <td>${esc(rec.model)}</td>
@@ -221,10 +238,12 @@
   <td><span class="lang-pill">${esc(rec.language)}</span></td>
   <td>${passIcon}</td>
   <td><span class="ci-val" style="color:${ciColour}">${ciLabel}</span></td>
+  <td>${locCellHTML}</td>
+  <td><span class="cost-val">${costLabel}</span></td>
   <td><span class="gap-count${rec.gaps.length > 0 ? ' has-gaps' : ''}">${rec.gaps.length}</span></td>
 </tr>
 <tr class="gap-detail-row hidden" id="gap-detail-${idx}" aria-hidden="true">
-  <td colspan="6"><div class="gap-detail-inner">${gapsHTML}</div></td>
+  <td colspan="8"><div class="gap-detail-inner">${gapsHTML}</div></td>
 </tr>`;
   }
 
@@ -233,23 +252,38 @@
    * Numbers and plural suffixes only — no data strings interpolated.
    * ───────────────────────────────────────────────────────────────────────── */
   function buildHeadlineStat(records) {
-    const passedWithGaps = records.filter((r) => r.reward >= 1 && r.gaps.length > 0).length;
-    const totalPassed = records.filter((r) => r.reward >= 1).length;
-    const totalRecords = records.length;
+    // Exclude oracle-gold from the GLM-focused headline
+    const glmRecords = records.filter((r) => r.model !== 'oracle-gold');
+    const totalGlmTasks = glmRecords.length;
+    const glmPassed = glmRecords.filter((r) => r.reward >= 1).length;
+    const glmGaveUp = glmRecords.filter((r) => r.gave_up === true).length;
 
-    if (totalPassed === 0) {
+    // Find the single most expensive GLM attempt
+    let priciest = null;
+    let priciestCost = 0;
+    let priciestTokens = 0;
+    for (const r of glmRecords) {
+      if (r.cost_usd != null && r.cost_usd > priciestCost) {
+        priciestCost = r.cost_usd;
+        priciest = r;
+        const totalTokens = (r.tokens.input || 0) + (r.tokens.output || 0);
+        priciestTokens = totalTokens;
+      }
+    }
+
+    if (totalGlmTasks === 0) {
       return { html: 'No solutions passed yet — benchmark warming up.', cls: 'neutral' };
     }
-    if (passedWithGaps === 0) {
-      const s = totalRecords !== 1 ? 's' : '';
-      return {
-        html: `${totalPassed} of ${totalRecords} solution${s} passed — 0 carried completeness gaps so far. <span class="thesis-note">(More models coming; the gap will show.)</span>`,
-        cls: 'clean',
-      };
-    }
-    const s = totalPassed !== 1 ? 's' : '';
+
+    const tokensMFormatted = priciestTokens > 0 ? (priciestTokens / 1_000_000).toFixed(0) + 'M' : '?';
+    const costFormatted = priciestCost > 0 ? '$' + priciestCost.toFixed(2) : '?';
+
+    const gaveUpPhrase = glmGaveUp > 0
+      ? ` <strong>${glmGaveUp}</strong> gave up without writing a line.`
+      : '';
+
     return {
-      html: `${passedWithGaps} of ${totalPassed} solution${s} that <strong>PASSED</strong> still carried completeness gaps.`,
+      html: `GLM models passed <strong>0 of ${totalGlmTasks}</strong> real feature tasks.${gaveUpPhrase} The priciest attempt burned <strong>${costFormatted}</strong> and <strong>${tokensMFormatted} tokens</strong> — and still failed.`,
       cls: 'warn',
     };
   }
@@ -273,12 +307,19 @@
 
     /* leaderboard — model IDs are escaped inside renderLeaderboardCard */
     const sortedModels = Object.entries(models).sort(
-      ([, a], [, b]) => computeCI(b.avg_dimension) - computeCI(a.avg_dimension)
+      ([, a], [, b]) => computeCI(b.avg_dimension) - computeCI(a.avg_dimension),
     );
     setHTML($('#leaderboard'), sortedModels.map(([id, m], i) => renderLeaderboardCard(id, m, i + 1)).join(''));
 
     /* task table — all data strings escaped inside renderTaskRow */
     setHTML($('#task-tbody'), records.map((r, i) => renderTaskRow(r, i)).join(''));
+
+    /* caveat note — set via textContent on a pre-existing element; no data strings used */
+    const caveatEl = $('#caveat-note');
+    if (caveatEl) {
+      caveatEl.textContent =
+        "trustmebro's static gap rules (stubs · unwired · skipped tests) fire on structurally-incomplete work; these GLM failures were behaviorally wrong or absent, so the behavioral + LOC + cost axes carried the signal here. See gate mode for static-gap detection in action.";
+    }
 
     /* row toggle — attached after DOM is in place */
     $$('.task-row').forEach((row) => {
@@ -293,7 +334,10 @@
       };
       row.addEventListener('click', toggle);
       row.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggle();
+        }
       });
     });
   }

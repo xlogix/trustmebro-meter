@@ -216,6 +216,20 @@ static checks, a large corpus, public hosting.
 - **Python/uv dependency.** Documented deviation from the pure TS/Bun house style; the
   boundary is contained in `pier/`.
 
+### Known limitations of the v1 static rules (tracked follow-ups)
+
+- **`unwired-export` export forms.** Detects `export function`/`export const`/`export
+class` only; `export default …` and re-exports (`export { X } from …`) are not yet
+  parsed → false negatives for those forms.
+- **`unwired-export` common-name over-match.** Reference search is `rg --word-regexp`,
+  so a short/common export name (`data`, `id`, `type`) can read as "referenced" merely
+  by textual co-occurrence → false negative. A future version should match imports of
+  the symbol, not bare word occurrences.
+- **`skipped-tests` `it.each`.** Assertion-free detection matches direct `it(...)`/
+  `test(...)` calls; `it.each(...)(...)` table tests aren't checked yet.
+- **`unwired-export` requires `rg`.** ripgrep must be on `PATH`; the rule fails loudly
+  with an actionable error if it isn't (no silent skip).
+
 ## 10. Success criteria for v1
 
 - A single TS task runs end-to-end through Pier and produces a `Score` with a binary
@@ -223,3 +237,26 @@ static checks, a large corpus, public hosting.
 - At least one rubric dimension demonstrably catches a real incompleteness that a
   binary pass/fail bench would score as "pass" (the proof the idea works).
 - The same scorer runs in gate mode against a local working tree with no harness.
+
+## 11. Roadmap — convention-fit / integration-debt dimension (fast-follow)
+
+A sixth dimension, added **after** the v1 slice is green: does the agent's new code
+_fit the codebase_ — reuse existing patterns, conventions, and utilities — or bolt on
+foreign code that accrues **technical debt** (duplicated logic, bypassed layers,
+divergent conventions, over-complex additions)?
+
+**Approach (hybrid, decided 2026-06-01).** The binary verdict stays deterministic and
+LLM-free. This dimension feeds the verdict ONLY through deterministic proxies; an
+LLM-judge "second opinion" may be attached as **advisory** output — reported separately,
+never folded into pass/fail.
+
+- **Deterministic proxies (verdict-eligible):** intra-repo duplication of added code;
+  reinvented-instead-of-imported utilities; bypassed layers (raw `fetch`/SQL where the
+  repo has an established wrapper); convention divergence (import style, naming, test
+  framework); added-function complexity (length / nesting depth).
+- **Advisory LLM judge (separate, non-binding):** a semantic read on "did it reuse the
+  right pattern / how much debt did it add," surfaced as labeled advice. Keeps the core
+  noise-free — the literature flags LLM-judge partial credit as the #1 source of
+  benchmark noise — while still capturing the semantic signal.
+
+Gets its own `design.md` + `implementation.md` once Tasks 1–13 are green.

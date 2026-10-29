@@ -57,3 +57,6 @@ coverage
 # bench: repo clone + worktree cache, and generated output records
 bench/.cache/
 bench/out/
+
+# Internal notes, never committed.
+/private/
